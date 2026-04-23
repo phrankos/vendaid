@@ -19,9 +19,6 @@ return new class extends Migration
             $table->foreignId(column: "role_id")->default(2)->constrained(
                 table:"roles"
             );
-            // $table->foreignId(column: "record_id")->default(0)->nullable()->constrained(
-            //     table:"records"
-            // );
             $table->rememberToken();
             $table->timestamp('email_verified_at')->nullable();
             $table->timestamps();

@@ -14,7 +14,6 @@ class MedicineController extends Controller
     private $headers = [
         'name' => [
             'id' => "ID",
-            'record_id' => "Record ID",
             'Medicine' => "Medicine",
             'position' => "Position",
             'start_date' => "Start Date",
@@ -26,7 +25,6 @@ class MedicineController extends Controller
         ],
         'type' => [
             'id' =>  'numeric',
-            'record_id' =>  'numeric',     
             'start_date' => "date",
             'end_date' => "date", 
             'created_at' => "datetime",
@@ -37,18 +35,6 @@ class MedicineController extends Controller
         ]
     ];
     private $dropdownOptions = [];
-
-    public function read(Request $request): Response
-    {
-        // $data = Medicine::find($request->user()->record_id)->toArray();
-        $data = Medicine::where('record_id', $request->user()->record_id)->get();
-
-        return Inertia::render('Medicine', [
-            'data' => $data,
-            'headers' => $this->headers,
-            'dropdownOptions' => $this->dropdownOptions
-        ]);
-    }
 
     /**
      * Display a listing of the resource.

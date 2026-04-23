@@ -12,59 +12,35 @@ use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
-    public function index()
-    {
-        $data = User::all();
-        $headers = [
-            'name' => ['id' =>  'ID',
-                'name' =>  "Name",
-                'email' =>  "Email Address",
-                'record_id' =>  'Record ID',
-                'role_id' =>  'Role',
-                'email_verified_at' =>  "Verified At",
-                'created_at' => "Created At",
-                'updated_at' =>  "Updated At"
-            ],
-            'type' => ['id' =>  'numeric',
-                'record_id' =>  'numeric',
-                'email_verified_at' =>  "datetime",
-                'created_at' => "datetime",
-                'updated_at' =>  "datetime"
-            ],
-            'dropdown' => ['role_id' => 'role',
-            ]
-        ];
-        // $headers = [
-        //     'name' => ['id' =>  'ID',
-        //         'name' =>  "Name",
-        //         'email' =>  "Email",
-        //         'record_id' =>  'Record ID',
-        //         'role_id' =>  'Role',
-        //         'email_verified_at' =>  "Verified At",
-        //         'created_at' => "Created At",
-        //         'updated_at' =>  "Updated At"
-        //     ],
-        //     'type' => ['id' =>  'numeric',
-        //         'name' =>  "text",
-        //         'email' =>  "text",
-        //         'record_id' =>  'numeric',
-        //         'role_id' =>  'text',
-        //         'email_verified_at' =>  "datetime",
-        //         'created_at' => "datetime",
-        //         'updated_at' =>  "datetime"
-        //     ],
-        //     'dropdown' => ['role_id' => 'role',
-        //     ]
-        // ];
+    // public function index()
+    // {
+    //     $data = User::all();
+    //     $headers = [
+    //         'name' => ['id' =>  'ID',
+    //             'name' =>  "Name",
+    //             'email' =>  "Email Address",
+    //             'role_id' =>  'Role',
+    //             'email_verified_at' =>  "Verified At",
+    //             'created_at' => "Created At",
+    //             'updated_at' =>  "Updated At"
+    //         ],
+    //         'type' => ['id' =>  'numeric',
+    //             'email_verified_at' =>  "datetime",
+    //             'created_at' => "datetime",
+    //             'updated_at' =>  "datetime"
+    //         ],
+    //         'dropdown' => ['role_id' => 'role',
+    //         ]
+    //     ];
 
-        return Inertia::render('AdminUsers', [
-            'data' => $data,
-            'headers' => $headers,
-            'dropdownOptions' => [
-                'role_id' => Role::all(["id", "role"]),
-            ],
-        ]);
-    }
+    //     return Inertia::render('Users', [
+    //         'data' => $data,
+    //         'headers' => $headers,
+    //         'dropdownOptions' => [
+    //             'role_id' => Role::all(["id", "role"]),
+    //         ],
+    //     ]);
+    // }
 
     public function update(Request $request)
     {
@@ -77,7 +53,6 @@ class UserController extends Controller
             'name' => 'required',
             'email' => 'required',
             'role_id' => 'required|numeric',
-            'record_id' => 'required',
         ]);
         if ($request->input('password') != null) {
             $user->update($request->all());
@@ -87,7 +62,7 @@ class UserController extends Controller
         }
 
         return redirect()->back()->with([
-            'success' => 'Record updated successfully.',
+            'success' => 'User updated successfully.',
             'data' => User::all(),
         ]);
             
@@ -103,7 +78,7 @@ class UserController extends Controller
         $user->fill($request->all());
         $user->save();
         return redirect()->back()->with([
-            'success' => 'Record updated successfully.',
+            'success' => 'User created successfully.',
             'data' => User::all()
         ]);
     }

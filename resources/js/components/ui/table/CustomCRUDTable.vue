@@ -149,7 +149,6 @@ const submit = () => {
             onSuccess: () => {
                 // setUnsavedChanges(false)
                 closeModal();
-                // router.reload({ only: ['records'] }); // NEED
                 data.value = props.data;
             },
             onError: () => console.log("ERROR")
@@ -164,7 +163,6 @@ const submitDelete = () => {
         preserveScroll: true,
         onSuccess: () => {
             closeModal();
-            // router.reload({ only: ['records'] }); // NEED
             data.value = props.data;
         },
         onError: () => console.log("ERROR")

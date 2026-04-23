@@ -33,7 +33,7 @@ const activeItemStyles = computed(
     () => (url: string) => (isCurrentRoute.value(url) ? 'text-neutral-900 dark:bg-neutral-800 dark:text-neutral-100' : ''),
 );
 
-const adminNavItems: NavItem[] = [
+const doctorNavItems: NavItem[] = [
     {
         title: 'Patients',
         href: '/patients',
@@ -49,11 +49,6 @@ const adminNavItems: NavItem[] = [
         href: '/medicines',
         icon: Tablets ,
     },
-    // {
-    //     title: 'Misc',
-    //     href: '/admin/misc',
-    //     icon: FileCog,
-    // },
 ];
 const userNavItems: NavItem[] = [
     {
@@ -63,7 +58,7 @@ const userNavItems: NavItem[] = [
     },
 ];
 
-const navItems = [adminNavItems, userNavItems];
+const navItems = [doctorNavItems, userNavItems];
 const currentNavItems = navItems[user.role_id-1];
 
 const rightNavItems: NavItem[] = [

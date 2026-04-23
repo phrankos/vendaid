@@ -5,19 +5,14 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Sex;
-use App\Models\LatinHonors;
-use App\Models\NameSuffix;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class SexController extends Controller
 {
-    // Display all Sexes, Honors, and Suffixes
     public function index()
     {
-        return Inertia::render('AdminMisc', [
-            'honors' => LatinHonors::all(),
-            'suffixes' => NameSuffix::all(),
+        return Inertia::render('Sexes', [
             'sexes' => Sex::all(),
         ]);
     }
