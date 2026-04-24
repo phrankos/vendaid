@@ -167,10 +167,12 @@ onMounted(() => {
                             :required="false"
                         />
                     </div>
+                    <!-- For Debug -->
                     <div class="mt-3 text-sm text-gray-500">
                         Binary String: 
                         <span class=" font-mono">{{ form.medicines_binary || 'No medicines selected' }}</span>
                     </div>
+                    <!-- For Debug -->
                 </div>
             </div>
         </CustomCRUDTable>

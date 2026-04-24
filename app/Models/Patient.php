@@ -15,7 +15,7 @@ class Patient extends Model
         /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory;
     protected $fillable = [
-        'mosip',
+        'scan_id',
         'last_name',
         'first_name',
         'middle_name',

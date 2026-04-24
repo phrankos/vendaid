@@ -14,7 +14,7 @@ class PatientSeeder extends Seeder
     public function run(): void
     {
         Patient::create([
-            'mosip' => 1,
+            'scan_id' => random_int(1000000000, 9999999999),
             'first_name' => "Juan",
             'middle_name' => "de la",
             'last_name' => "Cruz",
@@ -25,7 +25,7 @@ class PatientSeeder extends Seeder
             'updated_at' => now()
         ]);
         Patient::create([
-            'mosip' => 2,
+            'scan_id' => random_int(1000000000, 9999999999),
             'first_name' => "Maria",
             'middle_name' => "Clara",
             'last_name' => "Ole",
@@ -36,7 +36,7 @@ class PatientSeeder extends Seeder
             'updated_at' => now()
         ]);
         Patient::create([
-            'mosip' => 3,
+            'scan_id' => random_int(1000000000, 9999999999),
             'first_name' => "Rosario",
             'middle_name' => "Garcia",
             'last_name' => " Lopez",

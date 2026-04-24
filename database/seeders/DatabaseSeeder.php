@@ -25,6 +25,21 @@ class DatabaseSeeder extends Seeder
             'email' => 'admin@admin.com',
             'role_id'=> 1,
         ]);
+        User::factory()->create([
+            'name' => 'Grace',
+            'email' => 'grace@hospital.gov',
+            'role_id'=> 1,
+        ]);
+        User::factory()->create([
+            'name' => 'Refiller',
+            'email' => 'Refiller@hospital.gov',
+            'role_id'=> 2,
+        ]);
+        User::factory()->create([
+            'name' => 'New Account',
+            'email' => 'no@access.gg',
+            'role_id'=> 3,
+        ]);
         $this->call([
             SexSeeder::class,
             MedicinesSeeder::class,

@@ -42,7 +42,7 @@ watch(() => props.data, (newData) => {
 
 const form = useForm({
     id: 0,
-    mosip: '',
+    scan_id: '',
     first_name: '',
     middle_name: '',
     last_name: '',
@@ -67,8 +67,8 @@ const form = useForm({
                 required :tabindex=2 v-model="form.middle_name"  />
                 <LabeledInput :maxlength=255 label="Last Name" id="lastName" type="string" 
                 required :tabindex=3 v-model="form.last_name"  />
-                <LabeledInput class="col-span-2" :maxlength=255 label="MOSIP" id="mosip" type="number" 
-                required autofocus :tabindex=4 v-model="form.mosip" />
+                <LabeledInput class="col-span-2" :maxlength=255 label="Scan ID" id="scan_id" type="number" 
+                required autofocus :tabindex=4 v-model="form.scan_id" />
                 <DropdownInput column="sex" :options="dropdownOptions.sex_id" label="Sex" id="sex_id"
                 required :tabindex=5 v-model="form.sex_id"/>
             </div>

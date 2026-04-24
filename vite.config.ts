@@ -5,6 +5,14 @@ import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+    // server: {
+    //     host: true,
+    //     port: 5173,
+    //     hmr: {
+    //     host: 'sadness-prewar-operating.ngrok-free.dev',
+    //     protocol: 'wss',
+    //     },
+    // },
     plugins: [
         laravel({
             input: ['resources/js/app.ts'],

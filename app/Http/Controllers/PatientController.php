@@ -30,7 +30,7 @@ class PatientController extends Controller
         $headers = [
             'name' => [
                 'id' => "ID",
-                'mosip' => "MOSIP",
+                'scan_id' => "Scan ID",
                 'last_name' => "Last Name",
                 'first_name' => "First Name",
                 'middle_name' => "Middle Name",
