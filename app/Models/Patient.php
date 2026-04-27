@@ -19,6 +19,12 @@ class Patient extends Model
         'last_name',
         'first_name',
         'middle_name',
-        'sex_id'
+        'birthdate',
+        'barangay',
+        'sex_id',
+    ];
+
+    protected $casts = [
+        'birthdate' => 'date',
     ];
 }
