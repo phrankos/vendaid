@@ -38,12 +38,15 @@ def health():
 @app.route("/verify", methods=["POST"])
 def verify():
     data = request.get_json(force=True, silent=True) or {}
+    printable = {k: (v if k != "image_base64" else f"<{len(v)} chars>") for k, v in data.items()}
+    print(f"[/verify] scanned data: {printable}", flush=True)
     uin = data.get("uin")
     name = data.get("name")
-    image_b64 = data.get("image_base64")  
+    image_b64 = data.get("image_base64")
 
     if not uin or not name:
-        return jsonify({"error": "uin and name are required"}), 400
+        print(f"[/verify] missing fields — uin={uin!r} name={name!r}", flush=True)
+        return jsonify({"error": "uin and name are required", "received": printable}), 400
 
     demographics = DemographicsModel(name=[{"language": "eng", "value": name}])
 

@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Http;
 class MainSystemController extends Controller
 {
     private const MOSIP_SERVICE_URL = 'http://127.0.0.1:5000';
+    private const ESP32_CAM_URL = 'http://192.168.100.217/capture_b64';
+    private const CAM_PRE_CAPTURE_DELAY_MS = 1500;
     private const SENIOR_AGE = 60;
     // private const ALLOWED_BARANGAYS = ['San Jose'];
     private const ALLOWED_BARANGAYS = [];
@@ -27,16 +29,39 @@ class MainSystemController extends Controller
                 'message' => 'Request body must be JSON with a uin field',
             ], 400);
         }
-        // if up na esp32 cam
-        // if (empty($data['image_base64'])) {
-        //     return response()->json([
-        //         'status' => 'error',
-        //         'message'=> 'Face scan is required',
-        //         'reason' => 'missing_image',
-        //     ], 400);
-        // }
+
+        // Give the user a moment to look at the camera after scanning,
+        // then pull a fresh frame from the ESP32-CAM and bundle it in.
+        if (empty($data['image_base64'])) {
+            usleep(self::CAM_PRE_CAPTURE_DELAY_MS * 1000);
+            $img = $this->fetchCameraImage();
+            if ($img === null) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Camera capture failed',
+                    'reason' => 'camera_unreachable',
+                ], 502);
+            }
+            $data['image_base64'] = $img;
+        }
 
         return $this->handleMosipScan($data);
+    }
+
+    private function fetchCameraImage(): ?string
+    {
+        try {
+            $resp = Http::timeout(15)->get(self::ESP32_CAM_URL);
+        } catch (\Exception $e) {
+            Log::warning('cam fetch failed: '.$e->getMessage());
+            return null;
+        }
+        if (!$resp->ok()) {
+            Log::warning('cam returned HTTP '.$resp->status());
+            return null;
+        }
+        $body = trim($resp->body());
+        return $body === '' ? null : $body;
     }
 
     private function handleMosipScan(array $data)
