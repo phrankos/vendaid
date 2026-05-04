@@ -31,6 +31,8 @@ const data = ref(props.data);
 const headers = ref(props.headers);
 const dropdownOptions = props.dropdownOptions;
 
+console.log(data)
+
 const ROUTE = 'patients'
 const ROUTE_DESTROY = 'patients.destroy'
 const ROWNAME = 'Patient';

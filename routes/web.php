@@ -17,7 +17,7 @@ Route::get('dashboard', function () {
 
 Route::middleware(['auth', 'role:1|2'])->group(function () {
     Route::get('medicines', [MedicineController::class, 'index'])
-        ->middleware(['auth', 'verified'])->name('medicines.refiller');
+        ->middleware(['auth', 'verified'])->name('medicines');
 });
 
 Route::middleware(['auth', 'role:1'])->group(function () {

@@ -27,4 +27,25 @@ class Patient extends Model
     protected $casts = [
         'birthdate' => 'date',
     ];
+
+    protected $appends = ['created_by_name', 'updated_by_name'];
+
+    public function getCreatedByNameAttribute()
+    {
+        return $this->creator?->name;
+    }
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+    public function getUpdatedByNameAttribute()
+    {
+        return $this->updater?->name;
+    }
+
+    public function updater()
+    {
+        return $this->belongsTo(User::class, 'updated_by');
+    }
 }

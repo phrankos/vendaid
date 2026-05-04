@@ -17,7 +17,7 @@ class PrescriptionSeeder extends Seeder
             'patient_id' => 1,
             'issued_by' => 1,
             'expires_at' => now(),
-            'medicines_binary' => "1000110001",
+            'medicines_binary' => "10001100",
             'created_at' => now(),
             'updated_at' => now()
         ]);
@@ -25,7 +25,7 @@ class PrescriptionSeeder extends Seeder
             'patient_id' => 2,
             'issued_by' => 1,
             'expires_at' => now(),
-            'medicines_binary' => "1000000000",
+            'medicines_binary' => "10000000",
             'created_at' => now(),
             'updated_at' => now()
         ]);
@@ -33,7 +33,7 @@ class PrescriptionSeeder extends Seeder
             'patient_id' => 3,
             'issued_by' => 1,
             'expires_at' => now(),
-            'medicines_binary' => "0110000000",
+            'medicines_binary' => "01100000",
             'created_at' => now(),
             'updated_at' => now()
         ]);

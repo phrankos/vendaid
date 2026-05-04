@@ -9,3 +9,4 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::post('scan', [MainSystemController::class, 'receive'])->name('QR.receive');
+// Route::post('scan', [MainSystemController::class, 'receiveDebug'])->name('QR.receive'); //debug

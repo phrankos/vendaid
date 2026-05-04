@@ -15,10 +15,9 @@ Route::middleware(['auth', 'role:1'])->group(function () {
         ->name('patients.destroy');
 
     // Medicines
-    Route::put('medicines', [MedicineController::class, 'update']);
-    Route::post('medicines', [MedicineController::class, 'store']);
-    Route::delete('medicines/{id}', [MedicineController::class, 'destroy'])
-        ->name('medicines.destroy');
+    Route::post('medicines', [MedicineController::class, 'store'])->name('medicines.store');
+    Route::put('medicines', [MedicineController::class, 'update'])->name('medicines.update');
+    Route::delete('medicines/{id}', [MedicineController::class, 'destroy'])->name('medicines.destroy');
 
     // Prescriptions
     Route::post('prescriptions', [PrescriptionController::class, 'store'])->name('prescriptions.store');

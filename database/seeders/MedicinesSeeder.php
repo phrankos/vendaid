@@ -29,14 +29,6 @@ class MedicinesSeeder extends Seeder
             'amount_left' => 9
         ]);
         Medicine::create([
-            'name' => 'Furosemide 20mg',
-            'amount_left' => 10
-        ]);
-        Medicine::create([
-            'name' => 'Omeprazole 20mg',
-            'amount_left' => 3
-        ]);
-        Medicine::create([
             'name' => 'Paracetamol 500mg',
             'amount_left' => 1
         ]);

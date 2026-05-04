@@ -35,16 +35,18 @@ class PatientController extends Controller
                 'first_name' => "First Name",
                 'middle_name' => "Middle Name",
                 'sex_id' => "Sex",
-                'created_by' => "Created By",
-                'updated_by' => "Updated By",
+                // 'created_by' => "Created By",
+                // 'updated_by' => "Updated By",
+                'created_by_name' => "Created By",
+                'updated_by_name' => "Updated By",
+                'claimed_at' => "Claimed At",
                 'created_at' => "Created At",
                 'updated_at' => "Updated At",
                 'actions' => "Actions"
             ],
             'type' => [
                 'id' =>  'numeric',
-                'created_by' =>  'numeric',
-                'updated_by' => "numeric",
+                'claimed_at' =>  'date',
                 'created_at' => "datetime",
                 'updated_at' =>  "datetime"
             ],

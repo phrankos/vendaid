@@ -26,7 +26,7 @@ return new class extends Migration
             $table->foreignId(column: "updated_by")->constrained(
                 table:"users"
             );
-            
+            $table->date(column: "claimed_at")->nullable();
             $table->timestamps();
         });
     }

@@ -32,6 +32,7 @@ class PatientSeeder extends Seeder
             'sex_id' => 2,
             'created_by' => 1,
             'updated_by' => 1,
+            'claimed_at' => now(),
             'created_at' => now(),
             'updated_at' => now()
         ]);

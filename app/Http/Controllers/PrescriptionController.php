@@ -93,7 +93,7 @@ class PrescriptionController extends Controller
         
         $prescription->update($validated);
         
-        $updated = Prescription::find($id);
+        // $updated = Prescription::find($id);
         Log::channel('stderr')->info("Request: " . $request);
         Log::channel('stderr')->info("Updated binary: " . $prescription);
         // Log::channel('stderr')->info("Updated binary: " . $updated->medicines_binary);

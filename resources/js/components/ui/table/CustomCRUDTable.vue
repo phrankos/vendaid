@@ -263,7 +263,7 @@ export interface Identifiable {
                     :class="{'sticky right-0 bg-background/70 hover:bg-background':header === 'actions', 
                     'hover:bg-primary/10':header !== 'actions', 'font-mono': headerTypes[header] === 'numeric' }" v-for="header in orderedVisibleColumns" :key="header">
                         <span v-if="headerTypes[header] === 'datetime'">{{ new Date(row[header]).toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric', hour12: true }) }}</span>
-                        <span v-else-if="headerTypes[header] === 'date'">{{ new Date(row[header]).toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}) }}</span>
+                        <span v-else-if="headerTypes[header] === 'date' && row[header] && row[header].trim() !== ''">{{ new Date(row[header]).toLocaleString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'}) }}</span>
                         <span v-else-if="Object.keys(dropdownOptions).includes(header)">{{ dropdownOptions[header].find((ROW:Identifiable)=>ROW.id===row[header])[headerDropdownabbles[header]] }}</span>
                         <span v-else-if="headerTypes[header] === 'bin_loop'">{{ 
                             getNamesFromIds(row[header], props[headerDropdownabbles[header]])
