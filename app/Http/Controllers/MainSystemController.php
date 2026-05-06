@@ -15,8 +15,10 @@ use Illuminate\Support\Facades\Http;
 
 class MainSystemController extends Controller
 {
+    // private const MOSIP_SERVICE_URL = 'http://127.0.0.1:5000';
+    // private const ESP32_CAM_URL = 'http://192.168.100.217/capture_b64';
     private const MOSIP_SERVICE_URL = 'http://127.0.0.1:5000';
-    private const ESP32_CAM_URL = 'http://192.168.100.217/capture_b64';
+    private const ESP32_CAM_URL = 'http://10.147.37.92/capture_b64';
     private const CAM_PRE_CAPTURE_DELAY_MS = 1500;
     private const SENIOR_AGE = 60;
     // private const ALLOWED_BARANGAYS = ['San Jose'];
@@ -55,7 +57,7 @@ class MainSystemController extends Controller
     private function fetchCameraImage(): ?string
     {
         try {
-            $resp = Http::timeout(15)->get(self::ESP32_CAM_URL);
+            $resp = Http::timeout(60)->get(self::ESP32_CAM_URL);
         } catch (\Exception $e) {
             Log::warning('cam fetch failed: '.$e->getMessage());
             return null;
