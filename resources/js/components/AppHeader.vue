@@ -10,7 +10,7 @@ import UserMenuContent from '@/components/UserMenuContent.vue';
 import { getInitials } from '@/composables/useInitials';
 import type { BreadcrumbItem, NavItem, User } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { Tablets, FileClock, Users, FileCog, Menu, IdCard, FileUser } from 'lucide-vue-next';
+import { Tablets, FileClock, Users, FileCog, Menu, IdCard, FileUser, ReceiptText } from 'lucide-vue-next';
 import { computed } from 'vue';
 import Header from "@/components/Header.vue";
 
@@ -49,12 +49,17 @@ const doctorNavItems: NavItem[] = [
         href: '/medicines',
         icon: Tablets ,
     },
+    {
+        title: 'Transactions',
+        href: '/transactions',
+        icon: ReceiptText  ,
+    },
 ];
 const userNavItems: NavItem[] = [
     {
         title: 'Medicines',
         href: '/medicines',
-        icon: Tablets ,
+        icon: Tablets  ,
     },
 ];
 

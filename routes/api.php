@@ -10,3 +10,5 @@ Route::get('/user', function (Request $request) {
 
 Route::post('scan', [MainSystemController::class, 'receive'])->name('QR.receive');
 // Route::post('scan', [MainSystemController::class, 'receiveDebug'])->name('QR.receive'); //debug
+
+Route::post('dispensed', [MainSystemController::class, 'dispensed'])->name('dispense.success');

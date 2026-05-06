@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Medicine;
 use App\Models\Patient;
+use App\Models\PendingTransaction;
 use App\Models\Prescription;
 use App\Models\Transaction;
 use Carbon\Carbon;
+use Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
@@ -174,7 +176,7 @@ class MainSystemController extends Controller
             $claimedMonth = $patient->claimed_at ? date('m', strtotime($patient->claimed_at)) : "00";
             $currentMonth = date('m');
             if ($claimedMonth < $currentMonth) {    // Check if already claimed this month
-                $medicineBinaries = [];
+                // $medicineBinaries = [];
                 $requiredMedicines = [];
                 $missingMedicines = [];
                 $requiredMedicinesDetailed = [];
@@ -183,7 +185,8 @@ class MainSystemController extends Controller
                     
                 for ($i = 0; $i < strlen($binaryString); $i++) {
                     if ($binaryString[$i] == '1') {
-                        $medicineBinaries[] = str_pad(decbin($i), 3, '0', STR_PAD_LEFT);
+                        // $medicineBinaries[] = str_pad(str_pad(decbin($i), 3, '0', STR_PAD_LEFT), 4, '1', STR_PAD_LEFT);
+                        // $medicineBinaries[] = str_pad(decbin($i), 3, '0', STR_PAD_LEFT);
                         $requiredMedicines[] = $i+1;
                         $medicine = Medicine::find($i+1);
                         $requiredMedicinesDetailed[] = [$i+1, $medicine['name']];
@@ -195,15 +198,23 @@ class MainSystemController extends Controller
                 }
                 
                 if($can_dispense) {     // Check if all required medicines are in stock
-                    $transaction = new Transaction();
-                        $transaction->fill([
-                            'scan_id' => $uin,
-                            'transaction' => "Patient " . $uin . " successfully claimed medicine. Dispensed medicines: " . json_encode($requiredMedicinesDetailed),
-                            ]);
-                        $transaction->save();
+                    // $transaction = new Transaction();
+                    // $transaction->fill([
+                    //     'scan_id' => $uin,
+                    //     'transaction' => "Patient " . $uin . " successfully claimed medicine. Dispensed medicines: " . json_encode($requiredMedicinesDetailed),
+                    //     ]);
+                    // $transaction->save();
+                    // $patient['claimed_at'] = now();
+                    // $patient->update();
+                    $pending_transaction = new PendingTransaction();
+                    $pending_transaction->fill([
+                        'scan_id' => $data['uin'],
+                        'transaction_hash' => hash('sha256', random_bytes(32)),
+                    ]);
+                    $pending_transaction->save();
                     return response()->json([
                         'status' => 'success',
-                        'message' => 'Dispense Medicines',
+                        'message' => 'Clear to dispense for patient',
                         'uin' => $uin,
                         'eligible' => true,
                         'found' => true,
@@ -211,11 +222,17 @@ class MainSystemController extends Controller
                         'face_match' => $faceMatch,
                         'prescription' => (bool) $prescription,
                         'can_claim' => true,
-                        'medicine_binary' => $medicineBinaries,
-                        'required_medicines' => $requiredMedicines,
-                        'can_dispense' => $can_dispense
+                        'medicines' => $requiredMedicines,
+                        'can_dispense' => $can_dispense,
+                        'transaction_hash' => $pending_transaction['transaction_hash']
                     ], 200);
                 } else {
+                    $transaction = new Transaction();
+                    $transaction->fill([
+                        'scan_id' => $uin,
+                        'transaction' => "Patient " . $uin . " required medicine stock insufficient. Out of stock medicines: " . json_encode($missingMedicines),
+                        ]);
+                    $transaction->save();
                     return response()->json([
                         'status' => 'error',
                         'message' => 'Cannot dispense all required medicines',
@@ -231,6 +248,12 @@ class MainSystemController extends Controller
                     ], 200);
                 }
             } else {
+                $transaction = new Transaction();
+                $transaction->fill([
+                    'scan_id' => $uin,
+                    'transaction' => "Patient " . $uin . " has already claimed medicines for this month. Will not dispense."
+                ]);
+                $transaction->save();
                 return response()->json([
                     'status' => 'error',
                     'message' => 'Already claimed for this month',
@@ -244,6 +267,12 @@ class MainSystemController extends Controller
                 ], 200);
             }
         } else {
+            $transaction = new Transaction();
+            $transaction->fill([
+                'scan_id' => $uin,
+                'transaction' => "Patient " . $uin . " has no valid prescription. Will not dispense."
+            ]);
+            $transaction->save();
             return response()->json([
                 'status' => 'error',
                 'message' => 'Patient has no valid prescription',
@@ -293,102 +322,170 @@ class MainSystemController extends Controller
         $middle = implode(' ', $parts);
         return [$first, $middle, $last];
     }
-    // public function receiveDebug(Request $request)
-    // {
-    //     $receivedString = trim($request->getContent());
+    public function receiveDebug(Request $request)
+    {
+        // $receivedString = trim($request->getContent());
+        $data = json_decode($request->getContent(), true);
 
-    //     // Log::channel('stderr')->Info('Data received: ' . $receivedString . "\nChecking if Patient exists...");
-    //     $patientExists = Patient::where('scan_id', $receivedString)->exists();
-    //     if ($patientExists) {
-    //         $patient = Patient::where('scan_id', $receivedString)->first();
-    //         // Log::channel('stderr')->Info('Patient found: ' . $patient);
-    //         $latest_prescription = Prescription::where('patient_id', $patient->id)
-    //             ->where('expires_at', '>', now())  // only non-expired prescriptions
-    //             ->orderBy('created_at', 'desc')
-    //             ->first(); //get the latest from all the non-expired ones
-    //         // Log::channel('stderr')->Info('Prescription found : ' . $latest_prescription);
-    //         if ($latest_prescription) {
-    //             $claimedMonth = $patient->claimed_at ? date('m', strtotime($patient->claimed_at)) : "00";
-    //             $currentMonth = date('m');
-    //             if ($claimedMonth < $currentMonth) {
-    //                 $medicineBinaries = [];
-    //                 $requiredMedicines = [];
-    //                 $requiredMedicinesDetailed = [];
-    //                 $missingMedicines = [];
-    //                 $can_dispense = true;
-    //                 $binaryString = $latest_prescription['medicines_binary'];
+        $patientExists = Patient::where('scan_id', $data['uin'])->exists();
+        if ($patientExists) {
+            $patient = Patient::where('scan_id', $data['uin'])->first();
+            $latest_prescription = Prescription::where('patient_id', $patient->id)
+                ->where('expires_at', '>', now())  // only non-expired prescriptions
+                ->orderBy('created_at', 'desc')
+                ->first(); //get the latest from all the non-expired ones
+            if ($latest_prescription) {
+                $claimedMonth = $patient->claimed_at ? date('m', strtotime($patient->claimed_at)) : "00";
+                $currentMonth = date('m');
+                if ($claimedMonth < $currentMonth) {
+                    $medicineBinaries = [];
+                    $requiredMedicines = [];
+                    $requiredMedicinesDetailed = [];
+                    $missingMedicines = [];
+                    $can_dispense = true;
+                    $binaryString = $latest_prescription['medicines_binary'];
                     
-    //                 for ($i = 0; $i < strlen($binaryString); $i++) {
-    //                     if ($binaryString[$i] == '1') {
-    //                         $medicineBinaries[] = str_pad(decbin($i), 3, '0', STR_PAD_LEFT);
-    //                         $requiredMedicines[] = $i+1;
-    //                         $medicine = Medicine::find($i+1);
-    //                         $requiredMedicinesDetailed[] = [$i+1, $medicine['name']];
-    //                         if($medicine['amount_left'] < 1) {
-    //                             $can_dispense = false;
-    //                             $missingMedicines[] = [$i+1, $medicine['name']];
-    //                         }
-    //                     }
-    //                 }
+                    for ($i = 0; $i < strlen($binaryString); $i++) {
+                        if ($binaryString[$i] == '1') {
+                            $medicineBinaries[] = str_pad(str_pad(decbin($i), 3, '0', STR_PAD_LEFT), 4, '1', STR_PAD_LEFT);
+                            $requiredMedicines[] = $i+1;
+                            $medicine = Medicine::find($i+1);
+                            $requiredMedicinesDetailed[] = [$i+1, $medicine['name']];
+                            if($medicine['amount_left'] < 1) {
+                                $can_dispense = false;
+                                $missingMedicines[] = [$i+1, $medicine['name']];
+                            }
+                        }
+                    }
+                    if($can_dispense) {
+                        $pending_transaction = new PendingTransaction();
+                        $pending_transaction->fill([
+                            'scan_id' => $data['uin'],
+                            'transaction_hash' => hash('sha256', random_bytes(32)),
+                        ]);
+                        $pending_transaction->save();
+                        return response()->json([
+                            'status' => 'success',
+                            'message' => 'Clear to dispense for patient',
+                            'scan_id' => $data['uin'],
+                            'found' => true,
+                            'prescription' => (bool) $latest_prescription,
+                            'can_claim' => true,
+                            'can_dispense' => $can_dispense,
+                            'medicines' => $requiredMedicines,
+                            'transaction_hash' => $pending_transaction['transaction_hash']
+                        ], 200);
+                    } else {
+                        $transaction = new Transaction();
+                        $transaction->fill([
+                            'scan_id' => $data['uin'],
+                            'transaction' => "Failed to dispense. Required medicine stock insufficient. Out of stock medicines: " . json_encode($missingMedicines),
+                        ]);
+                        $transaction->save();
+                        return response()->json([
+                            'status' => 'error',
+                            'message' => 'Cannot dispense all required medicines',
+                            'scan_id' => $data['uin'],
+                            'found' => true,
+                            'prescription' => (bool) $latest_prescription,
+                            'can_claim' => true,
+                            'can_dispense' => $can_dispense,
+                            'missing_medicines' => $missingMedicines
+                        ], 200);
+                    }
                     
-    //                 if($can_dispense) {
-    //                     $transaction = new Transaction();
-    //                     $transaction->fill([
-    //                         'scan_id' => $receivedString,
-    //                         'transaction' => "Patient " . $receivedString . " successfully claimed medicine. Dispensed medicines: " . json_encode($requiredMedicinesDetailed),
-    //                         ]);
-    //                     $transaction->save();
+                } else {
+                    $transaction = new Transaction();
+                    $transaction->fill([
+                        'scan_id' => $data['uin'],
+                        'transaction' => "Has already claimed medicines for this month. Will not dispense."
+                    ]);
+                    $transaction->save();
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Already claimed for this month',
+                        'scan_id' => $data['uin'],
+                        'found' => true,
+                        'prescription' => (bool) $latest_prescription,
+                        'can_claim' => false,
+                    ], 200);
+                }
+            } else {
+                $transaction = new Transaction();
+                $transaction->fill([
+                    'scan_id' => $data['uin'],
+                    'transaction' => "Has no valid prescription. Will not dispense."
+                ]);
+                $transaction->save();
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Patient has no valid prescription',
+                    'scan_id' => $data['uin'],
+                    'found' => true,
+                    'prescription' => (bool) $latest_prescription,
+                ], 200);
+            }
+        } else {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Patient not found in database',
+                'scan_id' => $data['uin'],
+                'found' => false,
+            ], 200);
+        }
+    }
 
-    //                     return response()->json([
-    //                         'status' => 'success',
-    //                         'message' => 'Dispense Medicines',
-    //                         'scan_id' => $receivedString,
-    //                         'found' => true,
-    //                         'prescription' => (bool) $latest_prescription,
-    //                         'can_claim' => true,
-    //                         'medicine_binary' => $medicineBinaries,
-    //                         'can_dispense' => $can_dispense
-    //                     ], 200);
-    //                 } else {
-    //                     return response()->json([
-    //                         'status' => 'error',
-    //                         'message' => 'Cannot dispense all required medicines',
-    //                         'scan_id' => $receivedString,
-    //                         'found' => true,
-    //                         'prescription' => (bool) $latest_prescription,
-    //                         'can_claim' => true,
-    //                         'can_dispense' => $can_dispense,
-    //                         'missing_medicines' => $missingMedicines
-    //                     ], 200);
-    //                 }
-                    
-    //             } else {
-    //                 return response()->json([
-    //                     'status' => 'error',
-    //                     'message' => 'Already claimed for this month',
-    //                     'scan_id' => $receivedString,
-    //                     'found' => true,
-    //                     'prescription' => (bool) $latest_prescription,
-    //                     'can_claim' => false,
-    //                 ], 200);
-    //             }
-    //         } else {
-    //             return response()->json([
-    //                 'status' => 'error',
-    //                 'message' => 'Patient has no valid prescription',
-    //                 'scan_id' => $receivedString,
-    //                 'found' => true,
-    //                 'prescription' => (bool) $latest_prescription,
-    //             ], 200);
-    //         }
-    //     } else {
-    //         // Log::channel('stderr')->Info('Patient not in database\nCreating new Patient with '. $receivedString . 'as indentifier...'); 
-    //         return response()->json([
-    //             'status' => 'error',
-    //             'message' => 'Patient not found in database',
-    //             'scan_id' => $receivedString,
-    //             'found' => false,
-    //         ], 200);
-    //     }
-    // }
+    public function dispensed(Request $request)
+    {
+        $data = json_decode($request->getContent(), true);
+
+        if (!is_array($data) || !isset($data['uin'])) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Request body must be JSON with a uin field',
+            ], 400);
+        }
+
+        if (PendingTransaction::where('transaction_hash', $data['transaction_hash'])->exists()) {
+            $pending_transaction = PendingTransaction::where('transaction_hash', $data['transaction_hash'])
+            ->first();
+            $pending_transaction->delete();
+            
+            for ($i = 0; $i < count($data['medicines']); $i++) {
+                $row = Medicine::find($data['medicines'][$i]);
+                if ($row->amount_left >= 1) {
+                    $row->decrement('amount_left');
+                }
+            }
+
+            $transaction = new Transaction();
+            $transaction->fill([
+                'scan_id' => $data['uin'],
+                'transaction' => "Successfully claimed medicine. Dispensed medicines: " . json_encode($data['medicines']),
+            ]);
+            $transaction->save();
+
+            $patientExists = Patient::where('scan_id', $data['uin'])->exists();
+            if ($patientExists) {
+                $patient = Patient::where('scan_id', $data['uin'])->first();
+                $patient['claimed_at'] = now();
+                $patient->update();
+            }
+
+            return response()->json([
+                'status' => "success",
+                'message' => "Transaction ".$data['transaction_hash']." resolved successfully. Medicine counts decremented.",
+                'uin' => $data['uin'],
+                'medicines' => $data['medicines'],
+            ], 200);
+        } else {
+            return response()->json([
+                'status' => "error",
+                'message' => "No transaction with transaction hash found.",
+                'uin' => $data['uin'],
+                'transaction_hash' => $data['transaction_hash'],
+                'medicines' => $data['medicines']
+            ], 200);
+        }
+    }
 }

@@ -17,6 +17,13 @@ return new class extends Migration
             $table->string(column: 'transaction');
             $table->timestamps();
         });
+        
+        Schema::create('pending_transactions', function (Blueprint $table) {
+            $table->id();
+            $table->string(column: "scan_id");
+            $table->string(column: 'transaction_hash');
+            $table->timestamps();
+        });
     }
 
     /**

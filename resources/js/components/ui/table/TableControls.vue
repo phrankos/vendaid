@@ -19,6 +19,10 @@ const props = defineProps({
       type: Function,
       required: true,
     },
+    displayOnly: {
+      type: Boolean,
+      required: false
+    }
 });
 const headers = props.headers;
 const columnOrder = props.columnOrder;
@@ -28,7 +32,7 @@ const visibleColumnsMap = props.visibleColumnsMap;
 <template>
     <div class="flex flex-row p-4 justify-between sticky top-0 left-0 gap-x-4 z-1 bg-background">
         <ColumnDropdown :headers="headers" :visible-columns-map="visibleColumnsMap" :column-order="columnOrder" />
-        <Button
+        <Button v-if="!props.displayOnly"
             @click="openDialog(null,'create')"
             variant="accent"
             size="icon"

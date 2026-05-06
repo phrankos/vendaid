@@ -4,6 +4,7 @@ use App\Http\Controllers\MainSystemController;
 use App\Http\Controllers\PrescriptionController;
 use App\Http\Controllers\MedicineController;
 use App\Http\Controllers\PatientController;
+use App\Http\Controllers\TransactionController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -25,6 +26,8 @@ Route::middleware(['auth', 'role:1'])->group(function () {
         ->middleware(['auth', 'verified'])->name('patients');
     Route::get('prescriptions', [PrescriptionController::class, 'index'])
         ->middleware(['auth', 'verified'])->name('prescriptions');
+    Route::get('transactions', [TransactionController::class, 'index'])
+        ->middleware(['auth', 'verified'])->name('transactions');
 });
 
 

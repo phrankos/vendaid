@@ -42,6 +42,10 @@ const props = defineProps({
       type: Object,
       required: false,
     },
+    displayOnly : {
+      type: Boolean,
+      required: false,
+    },
 });
 
 const form = ref(props.form).value;
@@ -52,7 +56,7 @@ const dropdownOptions = props.dropdownOptions;
 const ROUTE = props.route;
 const ROUTE_DELETE = props.route_destroy;
 
-const headers = {...props.headers.name, ...{actions: "Actions"}};
+const headers = props.displayOnly ? props.headers.name : {...props.headers.name, ...{actions: "Actions"}};
 const headerTypes = props.headers.type;
 const headerDropdownabbles = props.headers.dropdown;
 
@@ -188,7 +192,7 @@ export interface Identifiable {
 </script>
 
 <template>
-    <TableControls :open-dialog="openDialog" :headers="headers" :visible-columns-map="visibleColumnsMap" :column-order="columnOrder"  />
+    <TableControls :displayOnly="props.displayOnly" :open-dialog="openDialog" :headers="headers" :visible-columns-map="visibleColumnsMap" :column-order="columnOrder"  />
     <div class="max-w-screen gap-x-4">
         <table class="min-w-screen table-auto shadow-sm bg-background">
         <thead> 
@@ -270,16 +274,18 @@ export interface Identifiable {
                         }}</span>
                         <span v-else>{{ row[header] }}</span>
                         <div v-if="header=='actions'" class="flex flex-row gap-x-2 items-center justify-center">
-                            <Button @click="openDialog(row.id, 'edit')" variant="default" size="sm" 
-                            class=" bg-accent2 text-accent-foreground hover:bg-accent2-darken"
-                            >
-                                <component v-if="SquarePen" :is="SquarePen" class="rounded-md inline-flex w-4" />
-                                <!-- Edit -->
-                            </Button>
-                            <Button :disabled="form.processing" @click="openDialog(row.id, 'delete')" class="bg-primary text-primary-foreground hover:bg-primary-hover" size="sm" variant="default">
-                                <component v-if="Trash2" :is="Trash2" class="rounded-md inline-flex w-4" />
-                                <!-- Delete -->
-                            </Button>
+                            <div v-if="!props.displayOnly">
+                                <Button @click="openDialog(row.id, 'edit')" variant="default" size="sm" 
+                                class=" bg-accent2 text-accent-foreground hover:bg-accent2-darken"
+                                >
+                                    <component v-if="SquarePen" :is="SquarePen" class="rounded-md inline-flex w-4" />
+                                    <!-- Edit -->
+                                </Button>
+                                <Button :disabled="form.processing" @click="openDialog(row.id, 'delete')" class="bg-primary text-primary-foreground hover:bg-primary-hover" size="sm" variant="default">
+                                    <component v-if="Trash2" :is="Trash2" class="rounded-md inline-flex w-4" />
+                                    <!-- Delete -->
+                                </Button>
+                            </div>
                         </div>
                     </td>
                 </tr>
