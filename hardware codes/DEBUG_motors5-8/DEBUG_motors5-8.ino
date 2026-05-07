@@ -28,28 +28,28 @@ void loop() {
 
     if (command == '\n' || command == '\r') return;
 
-    if (command == '1') {
+    if (command == '5') {
       Serial.println("Motor 1 rotating 1 revolution...");
       motor1.step(-stepsPerRevolution);
       Serial.println("Done.");
     } 
-    else if (command == '2') {
+    else if (command == '6') {
       Serial.println("Motor 2 rotating 1 revolution...");
       motor2.step(-stepsPerRevolution);
       Serial.println("Done.");
     } 
-    else if (command == '3') {
+    else if (command == '7') {
       Serial.println("Motor 3 rotating 1 revolution...");
       motor3.step(-stepsPerRevolution);
       Serial.println("Done.");
     } 
-    else if (command == '4') {
+    else if (command == '8') {
       Serial.println("Motor 4 rotating 1 revolution...");
       motor4.step(-stepsPerRevolution);
       Serial.println("Done.");
     } 
     else {
-      Serial.println("Unknown command. Use 1-4.");
+      Serial.println("Unknown command. Use 5-8.");
     }
   }
 }
