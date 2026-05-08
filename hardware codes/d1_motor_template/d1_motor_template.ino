@@ -34,8 +34,8 @@
 // COMMUNICATION LAYER — do not modify
 // ─────────────────────────────────────────────────────────────────────────────
 
-const char* WIFI_SSID = "cvmigwifi";
-const char* WIFI_PASS = "v1s1on-trans4m3r";
+const char* WIFI_SSID = "aclwifi";
+const char* WIFI_PASS = "@cl6rouP";
 
 // D7 = TX to Arduino, D2 = dummy RX (unused)
 SoftwareSerial toArduino(D2, D7);

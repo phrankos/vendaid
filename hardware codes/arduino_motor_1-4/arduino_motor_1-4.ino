@@ -65,10 +65,10 @@ void motorSetup() {
   // pinMode(MOTOR_6, OUTPUT);
   // pinMode(MOTOR_7, OUTPUT);
 
-  motor5.setSpeed(rpm);
-  motor6.setSpeed(rpm);
-  motor7.setSpeed(rpm);
-  motor8.setSpeed(rpm);
+  motor1.setSpeed(rpm);
+  motor2.setSpeed(rpm);
+  motor3.setSpeed(rpm);
+  motor4.setSpeed(rpm);
 }
 
 // Called automatically every time D1 B forwards a motor command.
