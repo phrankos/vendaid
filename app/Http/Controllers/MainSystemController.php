@@ -16,9 +16,9 @@ use Illuminate\Support\Facades\Http;
 class MainSystemController extends Controller
 {
     // private const MOSIP_SERVICE_URL = 'http://127.0.0.1:5000';
-    // private const ESP32_CAM_URL = 'http://192.168.100.217/capture_b64';
+    private const ESP32_CAM_URL = 'http://192.168.60.122/capture_b64';
     private const MOSIP_SERVICE_URL = 'http://127.0.0.1:5000';
-    private const ESP32_CAM_URL = 'http://10.147.37.92/capture_b64';
+    // private const ESP32_CAM_URL = 'http://10.147.37.92/capture_b64';
     private const CAM_PRE_CAPTURE_DELAY_MS = 1500;
     private const SENIOR_AGE = 60;
     // private const ALLOWED_BARANGAYS = ['San Jose'];
@@ -184,17 +184,17 @@ class MainSystemController extends Controller
                 $requiredMedicinesDetailed = [];
                 $can_dispense = true;
                 $binaryString = $prescription['medicines_binary'];
-                    
+                $allMedicines = Medicine::orderBy('id')->get();
+
                 for ($i = 0; $i < strlen($binaryString); $i++) {
                     if ($binaryString[$i] == '1') {
-                        // $medicineBinaries[] = str_pad(str_pad(decbin($i), 3, '0', STR_PAD_LEFT), 4, '1', STR_PAD_LEFT);
-                        // $medicineBinaries[] = str_pad(decbin($i), 3, '0', STR_PAD_LEFT);
-                        $requiredMedicines[] = $i+1;
-                        $medicine = Medicine::find($i+1);
-                        $requiredMedicinesDetailed[] = [$i+1, $medicine['name']];
-                        if($medicine['amount_left'] < 1) {
+                        $medicine = $allMedicines[$i] ?? null;
+                        if (!$medicine) continue;
+                        $requiredMedicines[] = $medicine->id;
+                        $requiredMedicinesDetailed[] = [$medicine->id, $medicine->name];
+                        if ($medicine->amount_left < 1) {
                             $can_dispense = false;
-                            $missingMedicines[] = [$i+1, $medicine['name']];
+                            $missingMedicines[] = [$medicine->id, $medicine->name];
                         }
                     }
                 }
@@ -214,6 +214,10 @@ class MainSystemController extends Controller
                         'transaction_hash' => hash('sha256', random_bytes(32)),
                     ]);
                     $pending_transaction->save();
+                    $medicineBinaries = array_map(
+                        fn($id) => str_pad(decbin($id), 3, '0', STR_PAD_LEFT),
+                        $requiredMedicines
+                    );
                     return response()->json([
                         'status' => 'success',
                         'message' => 'Clear to dispense for patient',
@@ -225,6 +229,7 @@ class MainSystemController extends Controller
                         'prescription' => (bool) $prescription,
                         'can_claim' => true,
                         'medicines' => $requiredMedicines,
+                        'medicine_binary' => $medicineBinaries,
                         'can_dispense' => $can_dispense,
                         'transaction_hash' => $pending_transaction['transaction_hash']
                     ], 200);
@@ -269,21 +274,28 @@ class MainSystemController extends Controller
                 ], 200);
             }
         } else {
+            $hasExpired = Prescription::where('patient_id', $patient->id)
+                ->where('expires_at', '<=', now())
+                ->exists();
+            $reason  = $hasExpired ? 'expired_prescription' : 'no_prescription';
+            $message = $hasExpired ? 'Prescription has expired' : 'Patient has no valid prescription';
+
             $transaction = new Transaction();
             $transaction->fill([
                 'scan_id' => $uin,
-                'transaction' => "Patient " . $uin . " has no valid prescription. Will not dispense."
+                'transaction' => "Patient " . $uin . " — " . $message . ". Will not dispense.",
             ]);
             $transaction->save();
             return response()->json([
                 'status' => 'error',
-                'message' => 'Patient has no valid prescription',
+                'message' => $message,
+                'reason' => $reason,
                 'uin' => $uin,
                 'eligible' => true,
                 'found' => true,
                 'mosip_verified' => true,
                 'face_match' => $faceMatch,
-                'prescription' => (bool) $prescription,
+                'prescription' => false,
             ], 200);
         }
     }
@@ -346,16 +358,18 @@ class MainSystemController extends Controller
                     $missingMedicines = [];
                     $can_dispense = true;
                     $binaryString = $latest_prescription['medicines_binary'];
-                    
+                    $allMedicines = Medicine::orderBy('id')->get();
+
                     for ($i = 0; $i < strlen($binaryString); $i++) {
                         if ($binaryString[$i] == '1') {
-                            $medicineBinaries[] = str_pad(str_pad(decbin($i), 3, '0', STR_PAD_LEFT), 4, '1', STR_PAD_LEFT);
-                            $requiredMedicines[] = $i+1;
-                            $medicine = Medicine::find($i+1);
-                            $requiredMedicinesDetailed[] = [$i+1, $medicine['name']];
-                            if($medicine['amount_left'] < 1) {
+                            $medicine = $allMedicines[$i] ?? null;
+                            if (!$medicine) continue;
+                            $medicineBinaries[] = str_pad(decbin($i + 1), 3, '0', STR_PAD_LEFT);
+                            $requiredMedicines[] = $medicine->id;
+                            $requiredMedicinesDetailed[] = [$medicine->id, $medicine->name];
+                            if ($medicine->amount_left < 1) {
                                 $can_dispense = false;
-                                $missingMedicines[] = [$i+1, $medicine['name']];
+                                $missingMedicines[] = [$medicine->id, $medicine->name];
                             }
                         }
                     }
