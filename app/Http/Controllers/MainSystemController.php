@@ -21,8 +21,8 @@ class MainSystemController extends Controller
     // private const ESP32_CAM_URL = 'http://10.147.37.92/capture_b64';
     private const CAM_PRE_CAPTURE_DELAY_MS = 1500;
     private const SENIOR_AGE = 60;
-    // private const ALLOWED_BARANGAYS = ['San Jose'];
-    private const ALLOWED_BARANGAYS = [];
+    private const ALLOWED_BARANGAYS = ['U.P. Campus'];
+    // private const ALLOWED_BARANGAYS = [];
     private const GENDER_TO_SEX_ID = ['Male' => 1, 'Female' => 2];
 
     public function receive(Request $request)
@@ -86,20 +86,19 @@ class MainSystemController extends Controller
             ], 400);
         }
 
-        // Age restriction
-        // if ($birthdate) {
-        //     $age = (int) $birthdate->diffInYears(now());
-        //     if ($age < self::SENIOR_AGE) {
-        //         return response()->json([
-        //             'status' => 'error',
-        //             'message' => 'Patient is not eligible (under '.self::SENIOR_AGE.')',
-        //             'uin' => $uin,
-        //             'eligible' => false,
-        //             'reason' => 'underage',
-        //             'age' => $age,
-        //         ], 200);
-        //     }
-        // }
+        if ($birthdate) {
+            $age = (int) $birthdate->diffInYears(now());
+            if ($age < self::SENIOR_AGE) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Patient is not eligible (under '.self::SENIOR_AGE.')',
+                    'uin' => $uin,
+                    'eligible' => false,
+                    'reason' => 'underage',
+                    'age' => $age,
+                ], 200);
+            }
+        }
 
         $payload = ['uin' => $uin, 'name' => $name];
         if (!empty($data['image_base64'])) {
