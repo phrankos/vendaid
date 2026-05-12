@@ -144,19 +144,12 @@ onMounted(() => {
             <div class="grid auto-rows-min gap-4 min-w-1xl lg:md:grid-cols-1 md:grid-cols-1 sm:grid-cols-1">
                 <DropdownInput column="patient_name" :options="dropdownOptions.patient_id" label="Patient" id="Patient"
                 required :tabindex=1 v-model="form.patient_id"/>
-                <DateInput
-                    v-model="form.expires_at"
-                    label="Expires At"
-                    id="expires_at"
-                    :required="true"
-                    :tabindex="1"></DateInput>
+                <DateInput v-model="form.expires_at" label="Expires At" id="expires_at" 
+                :required="true":tabindex="1"></DateInput>
                 
                 <div class="border rounded-lg p-4">
                     <h3 class="text-lg font-semibold mb-3">Medicines</h3>
-                    <div v-if="medicinesList.length === 0" class="text-gray-500">
-                        No medicines available
-                    </div>
-                    <div v-else class="grid grid-cols-2 gap-x-20 gap-3">
+                    <div class="grid grid-cols-2 gap-x-20 gap-3">
                         <CheckboxInput 
                             v-for="medicine in medicinesList"
                             :key="medicine.id"
@@ -167,12 +160,6 @@ onMounted(() => {
                             :required="false"
                         />
                     </div>
-                    <!-- For Debug -->
-                    <div class="mt-3 text-sm text-gray-500">
-                        Binary String: 
-                        <span class=" font-mono">{{ form.medicines_binary || 'No medicines selected' }}</span>
-                    </div>
-                    <!-- For Debug -->
                 </div>
             </div>
         </CustomCRUDTable>

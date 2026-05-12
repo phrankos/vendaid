@@ -96,6 +96,7 @@ class PatientController extends Controller
             'first_name' => 'required',
             'last_name' => 'required',
             'sex_id' => 'required',
+            'claimed_at' => 'required',
         ]);
 
         $patient['updated_by'] = $request->user()['id'];

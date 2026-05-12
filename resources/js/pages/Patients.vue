@@ -5,6 +5,7 @@ import { ref, watch } from 'vue'
 import { Head, useForm } from '@inertiajs/vue3';
 import { LabeledInput, DropdownInput } from '@/components/ui/input';
 import CustomCRUDTable from '@/components/ui/table/CustomCRUDTable.vue';
+import DateInput from '@/components/ui/input/DateInput.vue';
 
 const breadcrumbs: BreadcrumbItem[] = [
     {
@@ -49,6 +50,7 @@ const form = useForm({
     middle_name: '',
     last_name: '',
     sex_id: 1,
+    claimed_at: "",
     created_by: 0,
     updated_by: 0,
 });
@@ -73,6 +75,8 @@ const form = useForm({
                 required autofocus :tabindex=4 v-model="form.scan_id" />
                 <DropdownInput column="sex" :options="dropdownOptions.sex_id" label="Sex" id="sex_id"
                 required :tabindex=5 v-model="form.sex_id"/>
+                <DateInput class="col-span-3" v-model="form.claimed_at" label="Last Claimed" id="claimed_at" 
+                :required="true":tabindex="6"></DateInput>
             </div>
         </CustomCRUDTable>
     </AppLayout>
