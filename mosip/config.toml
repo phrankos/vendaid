@@ -7,7 +7,7 @@ ida_auth_request_otp_id = "mosip.identity.otp"
 ida_auth_env = "Staging"
 authorization_header_constant = "Authorization"
 partner_apikey = "336368"
-partner_misp_lk = "8M9eODeLeEJKcY4EP5JkQSTIDS9xOqdXCQFnLa2AVuMjY1W6t5"
+partner_misp_lk = "ulFV6JECDlCKf9l3bKRXyZElq5P3G0fKC3tePHYjWOHHmMeGWL"
 partner_id = "cs145-252-16"
 
 [mosip_auth_server]

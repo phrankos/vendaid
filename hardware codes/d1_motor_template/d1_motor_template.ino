@@ -10,6 +10,12 @@
 //    argument; just run whichever motor matches.
 // 4. Do NOT touch anything outside that section.
 //
+// STANDALONE TEST MODE (no D1 A needed)
+// ──────────────────────────────────────
+// Set TEST_MODE to 1. Open Serial Monitor at 115200 baud and type a motor
+// number (e.g. "3") and hit Enter — that motor will trigger immediately.
+// Set it back to 0 for normal ESP-NOW operation.
+//
 // Wiring (to Arduino):
 //   D1 pin D7 (TX) → Arduino pin 0 (RX)
 //   GND → GND (shared)
@@ -20,11 +26,16 @@
 #include <SoftwareSerial.h>
 
 // ─────────────────────────────────────────────────────────────────────────────
+// TEST MODE — set to 1 to test motors without D1 A
+// ─────────────────────────────────────────────────────────────────────────────
+#define TEST_MODE         1
+
+// ─────────────────────────────────────────────────────────────────────────────
 // COMMUNICATION LAYER — do not modify
 // ─────────────────────────────────────────────────────────────────────────────
 
-const char* WIFI_SSID = "cvmigwifi";
-const char* WIFI_PASS = "v1s1on-trans4m3r";
+const char* WIFI_SSID = "aclwifi";
+const char* WIFI_PASS = "@cl6rouP";
 
 // D7 = TX to Arduino, D2 = dummy RX (unused)
 SoftwareSerial toArduino(D2, D7);
@@ -48,6 +59,10 @@ void setup() {
   Serial.print("MAC: ");
   Serial.println(WiFi.macAddress());
 
+#if TEST_MODE
+  Serial.println("=== TEST MODE — cycling motors without D1 A ===");
+  motorSetup();
+#else
   // Connect to WiFi so this board locks onto the same channel as D1 A.
   // ESP-NOW requires both sender and receiver to be on the same channel.
   WiFi.mode(WIFI_STA);
@@ -66,15 +81,31 @@ void setup() {
 
   Serial.println("Ready — waiting for motor commands from D1 A.");
 
-  motorSetup();  // calls your pin setup below
+  motorSetup();
+#endif
 }
 
 void loop() {
+#if TEST_MODE
+  if (Serial.available()) {
+    String input = Serial.readStringUntil('\n');
+    input.trim();
+    int motor = input.toInt();
+    if (motor > 0 || input == "0") {
+      Serial.printf("[TEST] Triggering motor %d\n", motor);
+      toArduino.write((uint8_t)motor);
+      handleMotor(motor);
+    } else {
+      Serial.println("Invalid input — send a motor number (e.g. 1)");
+    }
+  }
+#else
   static unsigned long lastHeartbeat = 0;
   if (millis() - lastHeartbeat >= 5000) {
     Serial.println("Alive — waiting for motor commands.");
     lastHeartbeat = millis();
   }
+#endif
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
