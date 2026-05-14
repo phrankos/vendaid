@@ -58,13 +58,16 @@ void loop() {
 // #define MOTOR_6  4
 // #define MOTOR_7  5
 
+// Release coils after stepping to stop current draw and LED drain
+void releaseMotor(int p1, int p2, int p3, int p4) {
+  digitalWrite(p1, LOW);
+  digitalWrite(p2, LOW);
+  digitalWrite(p3, LOW);
+  digitalWrite(p4, LOW);
+}
+
 // Called once at startup — set your pin modes here
 void motorSetup() {
-  // pinMode(MOTOR_4, OUTPUT);
-  // pinMode(MOTOR_5, OUTPUT);
-  // pinMode(MOTOR_6, OUTPUT);
-  // pinMode(MOTOR_7, OUTPUT);
-
   motor1.setSpeed(rpm);
   motor2.setSpeed(rpm);
   motor3.setSpeed(rpm);
@@ -77,15 +80,19 @@ void handleMotor(int motor) {
   switch (motor) {
     case 1:
       motor1.step(-stepsPerRevolution);
+      releaseMotor(2, 4, 3, 5);
       break;
     case 2:
       motor2.step(-stepsPerRevolution);
+      releaseMotor(6, 8, 7, 9);
       break;
     case 3:
       motor3.step(-stepsPerRevolution);
+      releaseMotor(10, 12, 11, 13);
       break;
     case 4:
       motor4.step(-stepsPerRevolution);
+      releaseMotor(A0, A2, A1, A3);
       break;
     default:
       Serial.print("Motor ");
