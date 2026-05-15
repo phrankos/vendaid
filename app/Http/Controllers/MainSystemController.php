@@ -16,7 +16,12 @@ use Illuminate\Support\Facades\Http;
 class MainSystemController extends Controller
 {
     // private const MOSIP_SERVICE_URL = 'http://127.0.0.1:5000';
-    private const ESP32_CAM_URL = 'http://192.168.60.122/capture_b64';
+    // private const ESP32_CAM_URL = 'http://172.20.10.2/capture_b64';
+    // private const ESP32_CAM_URL = 'http://172.20.10.4/capture_b64';
+
+    private const ESP32_CAM_URL = 'http://192.168.60.154/capture_b64';
+    // private const ESP32_CAM_URL = 'http://10.107.43.21/capture_b64';
+
     private const MOSIP_SERVICE_URL = 'http://127.0.0.1:5000';
     // private const ESP32_CAM_URL = 'http://10.147.37.92/capture_b64';
     private const CAM_PRE_CAPTURE_DELAY_MS = 1500;
@@ -25,8 +30,29 @@ class MainSystemController extends Controller
     // private const ALLOWED_BARANGAYS = [];
     private const GENDER_TO_SEX_ID = ['Male' => 1, 'Female' => 2];
 
+    public function status(): \Illuminate\Http\JsonResponse
+    {
+        $cameraOk = $this->fetchCameraImage() !== null;
+
+        $pythonOk = false;
+        try {
+            $resp = Http::timeout(5)->get(self::MOSIP_SERVICE_URL . '/health');
+            $pythonOk = $resp->ok();
+        } catch (\Exception $e) {
+            // Python service unreachable
+        }
+
+        $ready = $cameraOk && $pythonOk;
+        return response()->json([
+            'status' => $ready ? 'ready' : 'not_ready',
+            'camera' => $cameraOk ? 'ok' : 'error',
+            'python' => $pythonOk ? 'ok' : 'error',
+        ], $ready ? 200 : 503);
+    }
+
     public function receive(Request $request)
     {
+        set_time_limit(0); // no limit — MOSIP retries can take up to ~130s
         $data = json_decode($request->getContent(), true);
 
         if (!is_array($data) || !isset($data['uin'])) {
@@ -36,38 +62,119 @@ class MainSystemController extends Controller
             ], 400);
         }
 
-        // Give the user a moment to look at the camera after scanning,
-        // then pull a fresh frame from the ESP32-CAM and bundle it in.
-        if (empty($data['image_base64'])) {
-            usleep(self::CAM_PRE_CAPTURE_DELAY_MS * 1000);
-            $img = $this->fetchCameraImage();
-            if ($img === null) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Camera capture failed',
-                    'reason' => 'camera_unreachable',
-                ], 502);
-            }
-            $data['image_base64'] = $img;
+        // Stream headers immediately so the scanner can show flash-countdown
+        // messages while the camera is capturing (instead of blocking until
+        // the full camera + MOSIP round-trip completes).
+        return response()->stream(
+            function () use ($data) {
+                $this->handleReceiveStream($data);
+            },
+            200,
+            ['Content-Type' => 'application/x-ndjson', 'X-Accel-Buffering' => 'no']
+        );
+    }
+
+    private function handleReceiveStream(array $data): void
+    {
+        $uin       = (string) $data['uin'];
+        $name      = $data['name'] ?? null;
+        $dob       = $data['dob'] ?? null;
+        $birthdate = $this->parseDob($dob);
+
+        if ($dob && !$birthdate) {
+            echo json_encode([
+                'status'   => 'error',
+                'message'  => 'Invalid date of birth',
+                'eligible' => false,
+                'reason'   => 'invalid_dob',
+            ]) . "\n";
+            return;
         }
 
-        return $this->handleMosipScan($data);
+        if ($birthdate) {
+            $age = (int) $birthdate->diffInYears(now());
+            if ($age < self::SENIOR_AGE) {
+                echo json_encode([
+                    'status'   => 'error',
+                    'message'  => 'Patient is not eligible (under ' . self::SENIOR_AGE . ')',
+                    'uin'      => $uin,
+                    'eligible' => false,
+                    'reason'   => 'underage',
+                    'age'      => $age,
+                ]) . "\n";
+                return;
+            }
+        }
+
+        if (empty($data['image_base64'])) {
+            // Brief pause so the user can look at the camera, then signal the
+            // scanner right before triggering the camera — this is the sync point
+            // that lets the LCD flash messages align with the camera flashes.
+            usleep(self::CAM_PRE_CAPTURE_DELAY_MS * 1000);
+            echo json_encode(['status' => 'capturing']) . "\n";
+            ob_flush();
+            flush();
+
+            $img = $this->fetchCameraImage();
+            if ($img === null) {
+                echo json_encode([
+                    'status'  => 'error',
+                    'message' => 'Camera capture failed',
+                    'reason'  => 'camera_unreachable',
+                ]) . "\n";
+                ob_flush();
+                flush();
+                // Emit the error but do not return — KYC still runs without face matching.
+            } else {
+                // Camera just did its confirmation flash — tell the scanner
+                echo json_encode(['status' => 'photo_taken']) . "\n";
+                ob_flush();
+                flush();
+
+                $data['image_base64'] = $img;
+            }
+        }
+
+        $payload = ['uin' => $uin, 'name' => $name];
+        if (!empty($data['image_base64'])) $payload['image_base64'] = $data['image_base64'];
+        if ($dob) $payload['dob'] = $dob;
+        foreach (['gender', 'age', 'phone_number', 'email_id', 'postal_code',
+                  'location1', 'location3', 'zone',
+                  'address_line1', 'address_line2', 'address_line3'] as $field) {
+            if (!empty($data[$field])) $payload[$field] = $data[$field];
+        }
+        $this->streamMosipScan($uin, $name, $data, $payload, $birthdate);
     }
 
     private function fetchCameraImage(): ?string
     {
-        try {
-            $resp = Http::timeout(60)->get(self::ESP32_CAM_URL);
-        } catch (\Exception $e) {
-            Log::warning('cam fetch failed: '.$e->getMessage());
+        // Use PHP stream wrapper with HTTP/1.0 so the ESP32-CAM's malformed
+        // chunked-encoding responses don't cause cURL error 56. HTTP/1.0 has
+        // no chunked encoding — the server sends the body and closes the socket.
+        $ctx = stream_context_create([
+            'http' => [
+                'method'           => 'GET',
+                'timeout'          => 15,
+                'protocol_version' => 1.0,
+                'header'           => "Connection: close\r\n",
+                'ignore_errors'    => true,
+            ],
+        ]);
+
+        $body = @file_get_contents(self::ESP32_CAM_URL, false, $ctx);
+
+        if ($body === false) {
+            Log::warning('cam fetch failed for ' . self::ESP32_CAM_URL);
             return null;
         }
-        if (!$resp->ok()) {
-            Log::warning('cam returned HTTP '.$resp->status());
+
+        $body = trim($body);
+        if ($body === '') {
+            Log::warning('cam returned empty body');
             return null;
         }
-        $body = trim($resp->body());
-        return $body === '' ? null : $body;
+
+        return $body;
     }
 
     private function handleMosipScan(array $data)
@@ -105,52 +212,102 @@ class MainSystemController extends Controller
             $payload['image_base64'] = $data['image_base64'];
         }
 
+        return response()->stream(
+            function () use ($uin, $name, $data, $payload, $birthdate) {
+                $this->streamMosipScan($uin, $name, $data, $payload, $birthdate);
+            },
+            200,
+            ['Content-Type' => 'application/x-ndjson', 'X-Accel-Buffering' => 'no']
+        );
+    }
+
+    private function streamMosipScan(
+        string $uin, ?string $name, array $data, array $payload, $birthdate
+    ): void {
+        // ── Call Python, forward waiting lines to Arduino immediately ──────────
+        $ctx = stream_context_create(['http' => [
+            'method'  => 'POST',
+            'header'  => "Content-Type: application/json\r\n",
+            'content' => json_encode($payload),
+            'timeout' => 200,
+        ]]);
+
+        $kyc = null;
         try {
-            $resp = Http::timeout(60)->post(self::MOSIP_SERVICE_URL.'/verify', $payload);
-            $kyc  = $resp->json();
+            $stream = fopen(self::MOSIP_SERVICE_URL.'/verify', 'r', false, $ctx);
+            if ($stream === false) {
+                throw new \RuntimeException('Could not open MOSIP stream');
+            }
+            while (($line = fgets($stream)) !== false) {
+                $line = trim($line);
+                if ($line === '') continue;
+                $parsed = json_decode($line, true);
+                if (($parsed['status'] ?? '') === 'waiting') {
+                    echo json_encode($parsed) . "\n";
+                    ob_flush(); flush();
+                } else {
+                    $kyc = $parsed ?? [];
+                    break;
+                }
+            }
+            fclose($stream);
         } catch (\Exception $e) {
-            return response()->json([
+            echo json_encode([
                 'status' => 'error',
                 'message' => 'MOSIP service unavailable',
                 'mosip_verified' => false,
-            ], 503);
+            ]) . "\n";
+            return;
         }
 
+        if ($kyc === null) {
+            echo json_encode([
+                'status' => 'error',
+                'message' => 'MOSIP service unavailable',
+                'mosip_verified' => false,
+            ]) . "\n";
+            return;
+        }
+
+        // ── Process KYC result ────────────────────────────────────────────────
         if (!($kyc['verified'] ?? false)) {
-            return response()->json([
+            echo json_encode([
                 'status' => 'error',
                 'message' => 'MOSIP identity verification failed',
                 'uin' => $uin,
                 'eligible' => false,
                 'mosip_verified' => false,
                 'errors' => $kyc['errors'] ?? [],
-            ], 200);
+            ]) . "\n";
+            return;
         }
 
         $faceMatch = $kyc['face_match'] ?? null;
         if ($faceMatch !== null && !($faceMatch['verified'] ?? false)) {
-            return response()->json([
+            echo json_encode([
                 'status' => 'error',
                 'message' => 'Face does not match MOSIP record',
                 'uin' => $uin,
                 'eligible' => false,
                 'mosip_verified' => true,
                 'face_match' => $faceMatch,
-            ], 200);
+            ]) . "\n";
+            return;
         }
 
         // barangay restriction
         $barangay = $kyc['kyc_data']['zone_eng'] ?? null;
         if (!empty(self::ALLOWED_BARANGAYS)
             && (!$barangay || !in_array($barangay, self::ALLOWED_BARANGAYS, true))) {
-            return response()->json([
+            echo json_encode([
                 'status' => 'error',
                 'message' => 'Patient is not in an eligible barangay',
                 'uin' => $uin,
                 'eligible' => false,
                 'reason' => 'wrong_barangay',
                 'barangay' => $barangay,
-            ], 200);
+            ]) . "\n";
+            return;
         }
 
         $sexId = self::GENDER_TO_SEX_ID[$kyc['kyc_data']['gender_eng'] ?? ''] ?? null;
@@ -172,12 +329,11 @@ class MainSystemController extends Controller
             ->where('expires_at', '>', now())
             ->orderBy('created_at', 'desc')
             ->first();
-        
-        if ($prescription) {    // Check for valid prescription
-            $claimedMonth = $patient->claimed_at ? date('m', strtotime($patient->claimed_at)) : "00";
-            $currentMonth = date('m');
-            if ($claimedMonth < $currentMonth) {    // Check if already claimed this month
-                // $medicineBinaries = [];
+
+        if ($prescription) {
+            $claimedThisMonth = $patient->claimed_at &&
+                date('Y-m', strtotime($patient->claimed_at)) === date('Y-m');
+            if (!$claimedThisMonth) {
                 $requiredMedicines = [];
                 $missingMedicines = [];
                 $requiredMedicinesDetailed = [];
@@ -197,27 +353,18 @@ class MainSystemController extends Controller
                         }
                     }
                 }
-                
-                if($can_dispense) {     // Check if all required medicines are in stock
-                    // $transaction = new Transaction();
-                    // $transaction->fill([
-                    //     'scan_id' => $uin,
-                    //     'transaction' => "Patient " . $uin . " successfully claimed medicine. Dispensed medicines: " . json_encode($requiredMedicinesDetailed),
-                    //     ]);
-                    // $transaction->save();
-                    // $patient['claimed_at'] = now();
-                    // $patient->update();
+
+                if ($can_dispense) {
+                    $patient->claimed_at = now();
+                    $patient->save();
+
                     $pending_transaction = new PendingTransaction();
                     $pending_transaction->fill([
                         'scan_id' => $data['uin'],
                         'transaction_hash' => hash('sha256', random_bytes(32)),
                     ]);
                     $pending_transaction->save();
-                    $medicineBinaries = array_map(
-                        fn($id) => str_pad(decbin($id), 3, '0', STR_PAD_LEFT),
-                        $requiredMedicines
-                    );
-                    return response()->json([
+                    echo json_encode([
                         'status' => 'success',
                         'message' => 'Clear to dispense for patient',
                         'uin' => $uin,
@@ -228,18 +375,17 @@ class MainSystemController extends Controller
                         'prescription' => (bool) $prescription,
                         'can_claim' => true,
                         'medicines' => $requiredMedicines,
-                        'medicine_binary' => $medicineBinaries,
                         'can_dispense' => $can_dispense,
-                        'transaction_hash' => $pending_transaction['transaction_hash']
-                    ], 200);
+                        'transaction_hash' => $pending_transaction['transaction_hash'],
+                    ]) . "\n";
                 } else {
                     $transaction = new Transaction();
                     $transaction->fill([
                         'scan_id' => $uin,
                         'transaction' => "Patient " . $uin . " required medicine stock insufficient. Out of stock medicines: " . json_encode($missingMedicines),
-                        ]);
+                    ]);
                     $transaction->save();
-                    return response()->json([
+                    echo json_encode([
                         'status' => 'error',
                         'message' => 'Cannot dispense all required medicines',
                         'uin' => $uin,
@@ -250,17 +396,17 @@ class MainSystemController extends Controller
                         'prescription' => (bool) $prescription,
                         'can_claim' => true,
                         'can_dispense' => $can_dispense,
-                        'missing_medicines' => $missingMedicines
-                    ], 200);
+                        'missing_medicines' => $missingMedicines,
+                    ]) . "\n";
                 }
             } else {
                 $transaction = new Transaction();
                 $transaction->fill([
                     'scan_id' => $uin,
-                    'transaction' => "Patient " . $uin . " has already claimed medicines for this month. Will not dispense."
+                    'transaction' => "Patient " . $uin . " has already claimed medicines for this month. Will not dispense.",
                 ]);
                 $transaction->save();
-                return response()->json([
+                echo json_encode([
                     'status' => 'error',
                     'message' => 'Already claimed for this month',
                     'uin' => $uin,
@@ -270,7 +416,7 @@ class MainSystemController extends Controller
                     'face_match' => $faceMatch,
                     'prescription' => (bool) $prescription,
                     'can_claim' => false,
-                ], 200);
+                ]) . "\n";
             }
         } else {
             $hasExpired = Prescription::where('patient_id', $patient->id)
@@ -285,7 +431,7 @@ class MainSystemController extends Controller
                 'transaction' => "Patient " . $uin . " — " . $message . ". Will not dispense.",
             ]);
             $transaction->save();
-            return response()->json([
+            echo json_encode([
                 'status' => 'error',
                 'message' => $message,
                 'reason' => $reason,
@@ -295,7 +441,7 @@ class MainSystemController extends Controller
                 'mosip_verified' => true,
                 'face_match' => $faceMatch,
                 'prescription' => false,
-            ], 200);
+            ]) . "\n";
         }
     }
 
@@ -479,13 +625,6 @@ class MainSystemController extends Controller
                 'transaction' => "Successfully claimed medicine. Dispensed medicines: " . json_encode($data['medicines']),
             ]);
             $transaction->save();
-
-            $patientExists = Patient::where('scan_id', $data['uin'])->exists();
-            if ($patientExists) {
-                $patient = Patient::where('scan_id', $data['uin'])->first();
-                $patient['claimed_at'] = now();
-                $patient->update();
-            }
 
             return response()->json([
                 'status' => "success",

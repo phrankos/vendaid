@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Input } from '@/components/ui/input';
-import { Calendar } from 'lucide-vue-next';
+import { Calendar, X } from 'lucide-vue-next';
 
 interface Props {
     disabled?: boolean;
@@ -58,8 +58,19 @@ const handleDateChange = (e: Event) => {
                 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
             />
             
+            <!-- Clear button (shown when a date is set and field is not required) -->
+            <button
+                v-if="!required && model"
+                type="button"
+                @click="model = ''"
+                class="absolute right-8 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                tabindex="-1"
+            >
+                <X :size="16" />
+            </button>
+
             <!-- Calendar Icon -->
-            <Calendar 
+            <Calendar
                 class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
                 :size="20"
             />

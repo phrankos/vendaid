@@ -13,11 +13,11 @@ def test_face(img1_path, img2_path):
         result = DeepFace.verify(
             img1_path=img1_path,
             img2_path=img2_path,
-            model_name="Facenet",
-            # model_name="ArcFace",
+            # model_name="Facenet",
+            model_name="ArcFace",
             # model_name="VGG-face",
             detector_backend="opencv",
-            # detector_backend="mtcnn",
+            detector_backend="mtcnn",
             # detector_backend="skip",
             distance_metric="cosine",
         )

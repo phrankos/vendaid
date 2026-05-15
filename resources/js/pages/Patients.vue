@@ -75,8 +75,8 @@ const form = useForm({
                 required autofocus :tabindex=4 v-model="form.scan_id" />
                 <DropdownInput column="sex" :options="dropdownOptions.sex_id" label="Sex" id="sex_id"
                 required :tabindex=5 v-model="form.sex_id"/>
-                <DateInput class="col-span-3" v-model="form.claimed_at" label="Last Claimed" id="claimed_at" 
-                :required="true":tabindex="6"></DateInput>
+                <DateInput class="col-span-3" v-model="form.claimed_at" label="Last Claimed" id="claimed_at"
+                :required="false" :tabindex="6"></DateInput>
             </div>
         </CustomCRUDTable>
     </AppLayout>

@@ -92,11 +92,11 @@ class PatientController extends Controller
         $id = $request->input('id');
         $patient = Patient::find($id);
 
-        $request->validate([            
+        $request->validate([
             'first_name' => 'required',
             'last_name' => 'required',
             'sex_id' => 'required',
-            'claimed_at' => 'required',
+            'claimed_at' => 'nullable|date',
         ]);
 
         $patient['updated_by'] = $request->user()['id'];

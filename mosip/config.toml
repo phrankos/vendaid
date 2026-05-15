@@ -27,6 +27,23 @@ algorithm = "RS256"
 sign_p12_file_path = "./keystore-signed.p12"
 sign_p12_file_password = "cs145-252-16@12345"
 
+[face]
+model            = "Facenet512"
+distance_metric  = "cosine"
+threshold        = 0.40   # raise above DeepFace default (0.30) to reduce false rejections
+
+[kyc]
+attempt_timeout_s = 6    # seconds before a single attempt is considered hung
+max_retries       = 20   # total attempts before giving up
+retry_delay_s     = 2    # wait between retries
+# Worst case: 10×5 + 9×2 = 68s — fits within Laravel 200s and Arduino 240s
+
+[mock]
+# Set enabled = true to use the prof's mock server instead of the real MOSIP testbed.
+# No certificates or SDK crypto are needed in mock mode.
+enabled = true
+url = "https://cs145-iot-cup-1745973870.ap-southeast-1.elb.amazonaws.com"
+
 [logging]
 log_file_path = "/tmp/authenticator.log"
 log_format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
