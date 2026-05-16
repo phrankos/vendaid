@@ -69,8 +69,8 @@ uint8_t D1B_MAC[] = {0xD8, 0xBF, 0xC0, 0xF9, 0x8D, 0x2B};
 
 const char* WIFI_SSID = "aclwifi";
 const char* WIFI_PASS = "@cl6rouP";
-// const char* SCAN_URL  = "http://192.168.60.172:8000/api/test-dispense";
-const char* SCAN_URL = "http://192.168.60.172:8000/api/scan";
+const char* SCAN_URL  = "http://192.168.60.172:8000/api/test-dispense";
+// const char* SCAN_URL = "http://192.168.60.172:8000/api/scan";
 const char* DISPENSED_URL = "http://192.168.60.172:8000/api/dispensed";
 
 // const char* WIFI_SSID = "Mon";
@@ -94,8 +94,9 @@ const unsigned long INTER_BYTE_TIMEOUT_MS = 300;
 const unsigned long COOLDOWN_MS           = 5000;
 const unsigned long DISPENSE_TIMEOUT_MS   = 15000;
 const unsigned long RETRIEVE_TIMEOUT_MS   = 30000;
-const float MEDICINE_PRESENT_CM = 8.0;  // < this means medicine is in the tray
-const int   DETECT_CONSECUTIVE  = 3;    // consecutive readings required to confirm drop
+const float MEDICINE_PRESENT_CM   = 8.0;   // < this means medicine is in the tray
+const int   DETECT_CONSECUTIVE    = 3;     // consecutive readings to confirm medicine drop
+const unsigned long RETRIEVE_HOLD_MS = 500; // chute must stay clear this long to confirm retrieval
 
 // ── Globals ───────────────────────────────────────────────────────────────────
 const byte TRIGGER_CMD[] = {0x7E, 0x00, 0x08, 0x01, 0x00, 0x02, 0x01, 0xAB, 0xCD};
@@ -336,21 +337,25 @@ bool waitForRetrieval() {
     return false;
   }
 
-  // Step 2: wait for distance to go back above threshold (medicine picked up)
+  // Step 2: chute must stay clear for RETRIEVE_HOLD_MS continuously.
+  // A hovering hand that briefly lifts resets the timer back to zero.
   start = millis();
-  consecutive = 0;
+  unsigned long clearSince = 0;
   while (millis() - start < RETRIEVE_TIMEOUT_MS) {
     float dist = measureDistance();
-    // Serial.printf("[retrieve-out] dist=%.2fcm consecutive=%d\n", dist, consecutive);
-    if (dist >= MEDICINE_PRESENT_CM) {
-      if (++consecutive >= DETECT_CONSECUTIVE) {
-        Serial.printf("retrieved (%.1fcm)\n", dist);
+    bool clear = dist > 0 && baselineDistance > 0 && dist >= baselineDistance - 2.0;
+    Serial.printf("[retrieve-out] dist=%.2fcm clear=%d holdMs=%lu\n",
+                  dist, clear, clearSince ? millis() - clearSince : 0UL);
+    if (clear) {
+      if (clearSince == 0) clearSince = millis();
+      if (millis() - clearSince >= RETRIEVE_HOLD_MS) {
+        Serial.printf("retrieved (%.1fcm, held %lums)\n", dist, RETRIEVE_HOLD_MS);
         lcdPrint("Got it!", "Next medicine...");
         delay(500);
         return true;
       }
     } else {
-      consecutive = 0;
+      clearSince = 0;  // hand came back — reset
     }
     delay(50);
   }
