@@ -22,29 +22,47 @@
 #define VSYNC_GPIO_NUM    25
 #define HREF_GPIO_NUM     23
 #define PCLK_GPIO_NUM     22
-//#define FLASH_LED_PIN      4
+#define FLASH_LED_PIN      4
 
-// const char *ssid     = "cvmigwifi";
-// const char *password = "v1s1on-trans4m3r";
-const char *ssid     ="Converge_2.4GHz_fG6m";
-const char *password = "eQZxC6sD";
+//const char *ssid     = "cvmigwifi";
+//const char *password = "v1s1on-trans4m3r";
+// const char *ssid     ="Ethan";
+// const char *password = "password123";
+const char *ssid     ="aclwifi";
+const char *password = "@cl6rouP";
+//const char *ssid     = "hootspoot";
+//const char *password = "hotdogspot";
+
+// const char *ssid     = "Mon";
+// const char *password = "xiaobao1";
 
 WebServer server(80);
-int photoCount = 0;
 
 // Store last photo in memory so /latest can serve it
-uint8_t *lastPhoto    = NULL;
+uint8_t *lastPhoto    = NULL; 
 size_t   lastPhotoLen = 0;
 
 bool savePhoto() {
-  //digitalWrite(FLASH_LED_PIN, HIGH);
-  //delay(200);
+  
+  const int DIM_DUTY = 10;  // (10 ≈ 4% brightness)
+
+  for (int i = 0; i < 3; i++) {
+      analogWrite(FLASH_LED_PIN, DIM_DUTY);  // ON
+      delay(100);
+      analogWrite(FLASH_LED_PIN, 0);         // OFF
+      delay(900);
+  }
+
+  // Fully off before capture
+  analogWrite(FLASH_LED_PIN, 0);
+  delay(100);
+
   // Discard first frame so exposure adjusts
   camera_fb_t *fb = esp_camera_fb_get();
   esp_camera_fb_return(fb);
-  // Actual capture
+  // Actual capture (flash stays OFF)
   fb = esp_camera_fb_get();
-  //digitalWrite(FLASH_LED_PIN, LOW);
+  
   if (!fb) {
     Serial.println("Camera capture failed");
     return false;
@@ -69,8 +87,8 @@ bool savePhoto() {
 
   // Save to SD card
   char filename[32];
-  snprintf(filename, sizeof(filename), "/photo_%03d.jpg", photoCount++);
-  File file = SD_MMC.open(filename, FILE_WRITE);
+  snprintf(filename, sizeof(filename), "/photo.jpg");
+  File file = SD_MMC.open(filename, FILE_WRITE, true);
   if (!file) {
     Serial.printf("Failed to open file: %s\n", filename);
     free(jpg_buf);
@@ -79,7 +97,12 @@ bool savePhoto() {
   file.write(jpg_buf, jpg_len);
   file.close();
   Serial.printf("Saved %s (%d bytes)\n", filename, jpg_len);
-  Serial.printf("View at: http://%s/latest\n", WiFi.localIP().toString().c_str()); // ← add this
+  Serial.printf("View at: http://%s/latest\n", WiFi.localIP().toString().c_str());
+
+  // Confirmation flash
+  analogWrite(FLASH_LED_PIN, DIM_DUTY);
+  delay(500);
+  analogWrite(FLASH_LED_PIN, 0);
 
   if (lastPhoto != NULL) free(lastPhoto);
   lastPhoto    = jpg_buf;
@@ -99,7 +122,7 @@ void handleCapture() {
 }
 
 // Same as /capture but returns the JPEG as base64 in the response body.
-// Streams the encoding in chunks so we never allocate one giant String --
+// Streams the encoding in chunks so we never allocate one giant String
 // works at UXGA where the full base64 would be ~200KB.
 void handleCaptureB64() {
   Serial.println("capture_b64 request from D1");
@@ -133,72 +156,12 @@ void handleLatest() {
   server.send_P(200, "image/jpeg", (const char *)lastPhoto, lastPhotoLen);
 }
 
-void handleRoot() {
-  String html = "<!DOCTYPE html><html><head><title>ESP32-CAM</title>";
-  html += "<style>body{background:#111;color:#fff;font-family:sans-serif;padding:20px;}";
-  html += "a{color:#4fc3f7;display:block;margin:8px 0;text-decoration:none;}";
-  html += "a:hover{color:#fff;} .del{color:#ef5350;margin-left:10px;}";
-  html += "img{max-width:100%;margin-top:20px;border:2px solid #444;}";
-  html += "button{padding:10px 20px;background:#2196F3;color:white;border:none;border-radius:6px;cursor:pointer;font-size:15px;}";
-  html += "button:hover{background:#1976D2;}</style></head><body>";
-  html += "<h2>ESP32-CAM</h2>";
-  html += "<button onclick=\"fetch('/capture').then(r=>r.text()).then(t=>{alert(t);document.getElementById('latest').src='/latest?t='+Date.now();})\">Take Photo</button>";
-  html += "<br><img id='latest' src='/latest' onerror=\"this.style.display='none'\" />";
-  html += "<h3>SD Card Photos</h3>";
-
-  File root = SD_MMC.open("/");
-  File file = root.openNextFile();
-  int count = 0;
-  while (file) {
-    String name = file.name();
-    if (name.endsWith(".jpg") || name.endsWith(".JPG")) {
-      html += "<div><a href='/photo?name=" + name + "' target='_blank'>" + name + " (" + String(file.size()) + " bytes)</a>";
-      html += "<a class='del' href='/delete?name=" + name + "' onclick=\"return confirm('Delete " + name + "?')\">delete</a></div>";
-      count++;
-    }
-    file = root.openNextFile();
-  }
-  if (count == 0) html += "<p>No photos on SD card yet.</p>";
-  html += "<p>" + String(count) + " photo(s) found.</p>";
-  html += "</body></html>";
-  server.send(200, "text/html", html);
-}
-
-void handlePhoto() {
-  if (!server.hasArg("name")) {
-    server.send(400, "text/plain", "Missing name parameter");
-    return;
-  }
-  String filename = "/" + server.arg("name");
-  File file = SD_MMC.open(filename, FILE_READ);
-  if (!file) {
-    server.send(404, "text/plain", "File not found");
-    return;
-  }
-  server.streamFile(file, "image/jpeg");
-  file.close();
-}
-
-void handleDelete() {
-  if (!server.hasArg("name")) {
-    server.send(400, "text/plain", "Missing name parameter");
-    return;
-  }
-  String filename = "/" + server.arg("name");
-  if (SD_MMC.remove(filename)) {
-    server.send(200, "text/plain", "Deleted " + filename);
-    Serial.println("Deleted: " + filename);
-  } else {
-    server.send(500, "text/plain", "Failed to delete " + filename);
-  }
-}
-
 void setup() {
   Serial.begin(115200);
   Serial.setDebugOutput(true);
   Serial.println();
-  //pinMode(FLASH_LED_PIN, OUTPUT);
-  //digitalWrite(FLASH_LED_PIN, LOW);
+  pinMode(FLASH_LED_PIN, OUTPUT);
+  digitalWrite(FLASH_LED_PIN, LOW);
 
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
@@ -272,12 +235,9 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   // Start web server
-  server.on("/", handleRoot);
   server.on("/capture", handleCapture);
   server.on("/capture_b64", handleCaptureB64);
   server.on("/latest", handleLatest);
-  server.on("/photo", handlePhoto);
-  server.on("/delete", handleDelete);
   server.begin();
 
   Serial.println("Ready! Waiting for capture requests from ESP8266...");

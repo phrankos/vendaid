@@ -19,11 +19,11 @@ class MainSystemController extends Controller
     // private const ESP32_CAM_URL = 'http://172.20.10.2/capture_b64';
     // private const ESP32_CAM_URL = 'http://172.20.10.4/capture_b64';
 
-    private const ESP32_CAM_URL = 'http://192.168.60.154/capture_b64';
+    // private const ESP32_CAM_URL = 'http://172.20.10.4/capture_b64';
     // private const ESP32_CAM_URL = 'http://10.107.43.21/capture_b64';
 
     private const MOSIP_SERVICE_URL = 'http://127.0.0.1:5000';
-    // private const ESP32_CAM_URL = 'http://10.147.37.92/capture_b64';
+    private const ESP32_CAM_URL = 'http://192.168.60.108/capture_b64';
     private const CAM_PRE_CAPTURE_DELAY_MS = 1500;
     private const SENIOR_AGE = 60;
     private const ALLOWED_BARANGAYS = ['U.P. Campus'];
@@ -104,6 +104,19 @@ class MainSystemController extends Controller
                 ]) . "\n";
                 return;
             }
+        }
+
+        $zone = $data['zone'] ?? null;
+        if (!empty(self::ALLOWED_BARANGAYS) && $zone !== null && !in_array($zone, self::ALLOWED_BARANGAYS, true)) {
+            echo json_encode([
+                'status'   => 'error',
+                'message'  => 'Patient is not in an eligible barangay',
+                'uin'      => $uin,
+                'eligible' => false,
+                'reason'   => 'wrong_barangay',
+                'barangay' => $zone,
+            ]) . "\n";
+            return;
         }
 
         if (empty($data['image_base64'])) {
@@ -193,19 +206,19 @@ class MainSystemController extends Controller
             ], 400);
         }
 
-        if ($birthdate) {
-            $age = (int) $birthdate->diffInYears(now());
-            if ($age < self::SENIOR_AGE) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Patient is not eligible (under '.self::SENIOR_AGE.')',
-                    'uin' => $uin,
-                    'eligible' => false,
-                    'reason' => 'underage',
-                    'age' => $age,
-                ], 200);
-            }
-        }
+        // if ($birthdate) {
+        //     $age = (int) $birthdate->diffInYears(now());
+        //     if ($age < self::SENIOR_AGE) {
+        //         return response()->json([
+        //             'status' => 'error',
+        //             'message' => 'Patient is not eligible (under '.self::SENIOR_AGE.')',
+        //             'uin' => $uin,
+        //             'eligible' => false,
+        //             'reason' => 'underage',
+        //             'age' => $age,
+        //         ], 200);
+        //     }
+        // }
 
         $payload = ['uin' => $uin, 'name' => $name];
         if (!empty($data['image_base64'])) {
@@ -572,18 +585,25 @@ class MainSystemController extends Controller
                     ], 200);
                 }
             } else {
+                $hasExpired = Prescription::where('patient_id', $patient->id)
+                    ->where('expires_at', '<=', now())
+                    ->exists();
+                $reason  = $hasExpired ? 'expired_prescription' : 'no_prescription';
+                $message = $hasExpired ? 'Prescription has expired' : 'Patient has no valid prescription';
+
                 $transaction = new Transaction();
                 $transaction->fill([
                     'scan_id' => $data['uin'],
-                    'transaction' => "Has no valid prescription. Will not dispense."
+                    'transaction' => "Patient " . $data['uin'] . " — " . $message . ". Will not dispense.",
                 ]);
                 $transaction->save();
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'Patient has no valid prescription',
+                    'message' => $message,
+                    'reason' => $reason,
                     'scan_id' => $data['uin'],
                     'found' => true,
-                    'prescription' => (bool) $latest_prescription,
+                    'prescription' => false,
                 ], 200);
             }
         } else {
@@ -610,8 +630,9 @@ class MainSystemController extends Controller
         if (PendingTransaction::where('transaction_hash', $data['transaction_hash'])->exists()) {
             $pending_transaction = PendingTransaction::where('transaction_hash', $data['transaction_hash'])
             ->first();
+            $scanId = $pending_transaction->scan_id;
             $pending_transaction->delete();
-            
+
             for ($i = 0; $i < count($data['medicines']); $i++) {
                 $row = Medicine::find($data['medicines'][$i]);
                 if ($row->amount_left >= 1) {
@@ -621,7 +642,7 @@ class MainSystemController extends Controller
 
             $transaction = new Transaction();
             $transaction->fill([
-                'scan_id' => $data['uin'],
+                'scan_id' => $scanId,
                 'transaction' => "Successfully claimed medicine. Dispensed medicines: " . json_encode($data['medicines']),
             ]);
             $transaction->save();

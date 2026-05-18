@@ -41,7 +41,7 @@ retry_delay_s     = 2    # wait between retries
 [mock]
 # Set enabled = true to use the prof's mock server instead of the real MOSIP testbed.
 # No certificates or SDK crypto are needed in mock mode.
-enabled = true
+enabled = false
 url = "https://cs145-iot-cup-1745973870.ap-southeast-1.elb.amazonaws.com"
 
 [logging]

@@ -121,7 +121,7 @@ Route::post('test-dispense', function (Request $request) {
     }
 
     $claimedThisMonth = $patient->claimed_at &&
-        strtotime($patient->claimed_at) >= strtotime($prescription->created_at);
+        date('Y-m', strtotime($patient->claimed_at)) === date('Y-m');
     if ($claimedThisMonth) {
         return response()->json([
             'status'         => 'error',
